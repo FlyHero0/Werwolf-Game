@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Werwolf - Extended Edition</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffaf0;--ink:#2a2118;--mut:#7a6b58;--acc:#8c2f2f;--acc2:#e9dcc3;--bd:#d9c9a8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15121a;--card:#201b29;--ink:#efe8f5;--mut:#a79cb8;--acc:#c94a4a;--acc2:#2d2639;--bd:#3a3248;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15121a;--card:#201b29;--ink:#efe8f5;--mut:#a79cb8;--acc:#c94a4a;--acc2:#2d2639;--bd:#3a3248;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:480px;margin:0 auto;padding:20px 16px 40px;min-height:100vh}
+h1{font-size:2rem;margin:.2em 0;text-align:center}
+h2{font-size:1.4rem;margin:.6em 0;text-align:center}
+p{text-align:center;color:var(--mut)}
+p b{color:var(--ink)}
+.big{font-size:2rem;font-weight:700;text-align:center;margin:.5em 0;word-break:break-word}
+.c{display:flex;flex-direction:column;justify-content:center;min-height:70vh}
+button{display:block;width:100%;margin:10px 0;padding:15px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--ink);font:inherit;font-weight:600}
+button:active{transform:scale(.98)}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.ghost{background:transparent;color:var(--mut)}
+button.sm{display:inline-block;width:44px;margin:0 8px;padding:8px}
+button.sel{background:var(--acc2);border-color:var(--acc)}
+input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--ink);font:inherit}
+.row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
+.row span:last-child{display:flex;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{background:var(--acc2);border-radius:20px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:6px}
+.chip button{width:26px;height:26px;margin:0;padding:0;border-radius:50%;line-height:1;background:transparent;border:0;color:var(--mut)}
+.warn{color:var(--acc);text-align:center;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:18px;margin:12px 0}
+.story-text{font-style:italic;text-align:left;line-height:1.6;color:var(--ink);margin:10px 0}
+.chronik-item{border-left:3px solid var(--acc);padding-left:10px;margin:10px 0;text-align:left}
+@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#app>*{animation:in .4s ease both}
+#app.still>*{animation:none}
+@keyframes pop{0%{transform:scale(.5) rotate(-8deg);opacity:0}70%{transform:scale(1.1) rotate(2deg);opacity:1}100%{transform:none}}
+.card .big,.c .big{animation:pop .7s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+body{transition:background 1.2s,color 1.2s}
+body::before{content:'';position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:16px;font-size:2.4rem;pointer-events:none;opacity:.9;z-index:5}
+body.night{--bg:#0d0b1a;--card:#1a1630;--ink:#e8e4ff;--mut:#9890c0;--acc:#7c5cff;--acc2:#241e45;--bd:#2f2858;color-scheme:dark}
+body.night::before{content:'🌙';animation:float 6s ease-in-out infinite}
+body.day{--bg:#fdf0d5;--card:#fffaf0;--ink:#2a2118;--mut:#7a6b58;--acc:#c2452d;--acc2:#f3dfb4;--bd:#e0c88e;color-scheme:light}
+body.day::before{content:'☀️';animation:float 6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const R={
+werewolf:['Werwolf','🐺','Schleicht durch die Nacht und wählt gemeinsam mit den anderen Werwölfen ein Opfer.'],
+villager:['Dorfbewohner','🧑‍🌾','Ein einfacher Dorfbewohner. Nutze deinen Verstand, um die Werwölfe zu enttarnen.'],
+seer:['Seherin','🔮','Blickt durch die Schleier der Nacht und erfährt die wahre Natur eines Mitspielers.'],
+witch:['Hexe','🧪','Besitzt einen gebrauchsfertigen Heiltrank und ein tödliches Gift. Einmalig nutzbar.'],
+hunter:['Jäger','🏹','Ein erfahrener Jäger. Stirbt er, zieht er in seinen letzten Sekunden noch jemanden mit in den Tod.'],
+guard:['Beschützer','🛡️','Stellt sich schützend vor eine Person, darf aber nie dieselbe Person zweimal in Folge schützen.'],
+wildchild:['Wildes Kind','👧','Wählt in der 1. Nacht ein Vorbild. Stirbt das Vorbild, wird das Wilde Kind augenblicklich zum Werwolf!'],
+squirrel:['Eichhörnchen','🐿️','Bonusrolle: Lenkt jede Nacht einen Spieler ab. Dieser kann seine Nachtfähigkeit nicht nutzen.'],
+stone:['Stein','🪨','Bonusrolle: So hart wie Fels! Überlebt den ersten Angriff der Werwölfe mühelos.'],
+dog:['Hund','🐕','Bonusrolle: Treu bis in den Tod! Wird er gefressen, reißt er im Kampf einen Werwolf mit.'],
+fool:['Narr','🤡','Bonusrolle: Sein Ziel ist es, vom Dorf hingerichtet zu werden. Schafft er das, gewinnt er sofort alleine!'],
+amor:['Amor','💘','Verschießt in der ersten Nacht seine Liebespfeile. Stirbt einer der Verliebten, stirbt der andere an gebrochenem Herzen.'],
+wolfdog:['Wolfshund','🐶','Steht an der Schwelle: Entscheidet in der ersten Nacht, ob er als Werwolf jagt oder als Dorfbewohner lebt.'],
+fox:['Fuchs','🦊','Bonusrolle: Wählt 3 Personen aus. Er erfährt, ob sich mindestens ein Werwolf darunter befindet. Schlägt die Witterung fehl, verliert er die Fähigkeit.'],
+rooster:['Hahn','🐓','Bonusrolle: Kräht jede Nacht nach einem Verdächtigen, der am Morgen als Erster sprechen muss.']
+};
+
+const BONUS=['squirrel','stone','dog','fool','fox','rooster'];
+let names=[],cfg={werewolf:2,seer:1,witch:1,hunter:0,guard:0,wildchild:0,amor:0,wolfdog:0,squirrel:0,stone:0,dog:0,fool:0,fox:0,rooster:0},bon={squirrel:true,stone:true,dog:true,fool:true,fox:true,rooster:true},capOn=true,G,H=[];
+const app=document.getElementById('app');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function show(f){app.innerHTML=f();window.scrollTo(0,0)}
+function B(l,f,c){H.push(f);return `<button class="${c||''}" data-h="${H.length-1}">${l}</button>`}
+app.onclick=e=>{const b=e.target.closest('button[data-h]');if(b)H[+b.dataset.h]()};
+app.onkeydown=e=>{if(e.key==='Enter'&&e.target.id==='nm')addName()};
+const alive=()=>G.p.filter(p=>p.alive);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+let A=null,sndOn=true,voiceOn=true,vp=.8;
+const ctx=()=>{A=A||new (window.AudioContext||window.webkitAudioContext)();if(A.state==='suspended')A.resume();return A};
+function tone(f,d,type,v,at,f2){const c=ctx(),o=c.createOscillator(),g=c.createGain(),t=c.currentTime+(at||0);o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v||.1,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.05)}
+
+const sfx={
+ click:()=>tone(520,.07,'triangle',.06),
+ night:()=>{[110,165,220].forEach((f,i)=>tone(f,2.6,'sine',.09,i*.2));tone(300,.9,'sine',.07,.6,560);tone(560,1.3,'sine',.07,1.5,260)},
+ day:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.55,'triangle',.1,i*.15)),
+ death:()=>{tone(320,.9,'sawtooth',.08,0,70);tone(90,1,'sine',.15,.1)},
+ win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.7,'triangle',.11,i*.14)),
+ reveal:()=>{tone(220,.5,'sine',.1);tone(330,.7,'sine',.08,.12)},
+ wolfHowl:()=>{tone(120,1.8,'sawtooth',.12,0,240);tone(240,1.5,'sine',.1,.5,180)},
+ magic:()=>{[600,800,1000,1200].forEach((f,i)=>tone(f,.4,'sine',.08,i*.1))},
+ witchPotion:()=>{tone(300,.8,'sawtooth',.09,0,150);tone(150,1.2,'sine',.1,.3,400)},
+ shot:()=>{tone(800,.15,'sawtooth',.2,0,80);tone(100,.4,'sine',.25,.05)}
+};
+
+function play(n){if(!sndOn)return;try{if(sfx[n])sfx[n]();if(n==='death'&&navigator.vibrate)navigator.vibrate([180,90,180])}catch(e){}}
+function say(t){if(!voiceOn||!window.speechSynthesis)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\s.,!?:-]/gu,' '));u.lang='de-DE';u.rate=.9;u.pitch=vp;const v=speechSynthesis.getVoices().find(x=>x.lang&&x.lang.startsWith('de'));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
+
+function addLog(txt){if(!G.log)G.log=[];G.log.push({round:G.night,txt:txt})}
+
+function fx(){
+ app.classList.toggle('still',!!app.querySelector('h1'));
+ const h=(app.querySelector('h2')||{}).textContent||'',t=app.textContent,ps=[...app.querySelectorAll('p')].map(p=>p.textContent).join(' ');
+ if(h.includes('Nacht ')&&h.includes('🌙')){document.body.className='night';play('night');say('Die Nacht bricht über das Dorf hinein. Alle schließen die Augen.')}
+ else if(h.includes('Der Morgen')){document.body.className='day';play('day');say('Der Morgen bricht an. '+ps)}
+ else if(h.includes('Tag ')&&h.includes('🗳')){document.body.className='day';say('Das Dorf diskutiert über das Geschehene.')}
+ else if(h.includes('entschieden')||h.includes('💥')||h.includes('💔')){play('death');say(ps)}
+ else if(h.includes('gewinn')){play('win');say(h+'. '+ps)}
+ else if(h.includes('📜')){document.body.className='night';say(ps)}
+ else if(h.includes('Spielleitung')){say((app.querySelector('.card p')||{}).textContent)}
+}
+const _s=show;show=f=>{_s(f);fx()};
+document.addEventListener('click',e=>{if(e.target.closest('button'))play('click')});
+const pk=a=>a[Math.random()*a.length|0];
+
+const ST={
+ names:['Dunkeltal','Rabenfels','Düsterwald','Schattenhain','Krähenmoor','Kupferthal','Totenvass'],
+ weather:['Dichter, undurchdringlicher Nebel legt sich','Ein blutroter Vollmond wirft lange Schatten','Eisiger Heulwind pfeift durch die Gassen','Kalter, peitschender Regen schlägt gegen die Fenster','Ein dunkles Gewitter grollt in der Ferne'],
+ event:['Seit Tagen fehlen Haustiere spurlos auf den Höfen.','Tiefe Klauenspuren wurden im frischen Schlamm entdeckt.','Das Brunnenwasser färbte sich über Nacht tiefrot.','Die alte Dorfglocke schlug um Mitternacht dreizehn Mal.','Ein schreiender Wanderer warnte das Dorf vor Monstern.']
+};
+const MN=['Ein Hahn kräht erlösend. Das Dorf atmet auf: Niemand fehlt in dieser Nacht.','Der Nebel lichtet sich. Die Haustüren stehen unversehrt da – keine Spur von Blut.','Hat die Bestie diese Nacht geruht? Überrascht erwachen die Dorfbewohner.'];
+const MD=['Ein entsetzter Schrei hallt durch die stillen Gassen!','Erbleichte Gesichter versammeln sich auf dem Dorfplatz. Die Nacht forderte ihren Blutzoll.','Dumpf schlägt die Glocke an. Ein Haus bleibt heute Morgen verschlossen.'];
+
+const DL={
+ werewolf:['Spuren von Wölfen klebten an seinen Händen. Die Bestie ist vernichtet!','Ein letztes, schreckliches Heulen verhallt in den Bergen.'],
+ villager:['Ein unschuldiger Mensch, vom Wahn des Dorfes gefällt.','Sein Platz am Feuer bleibt fortan leer.'],
+ seer:['Ihre Kristallkugel zersprang in tausend Teile. Das Sehende Auge ist blind.','Keine Visionen werden das Dorf mehr warnen.'],
+ witch:['Ihre Kessel zerbrachen, die magischen Tränke versickerten im Boden.','Ihre Zauber sind verflogen.'],
+ hunter:['Sein Pfeil schnellte im Sturz noch vom Bogen.','Selbst im Sterben legte er die Sehne nicht ab.'],
+ guard:['Sein Schild zersplitterte. Wer schützt nun die Unschuldigen?','Ein wahrer Beschützer hat seine letzte Wache beendet.'],
+ wildchild:['Das Wilde Kind ist gefallen, bevor sein dunkles Erbe erwachen konnte.','Keine wilde Bestie wird mehr aus ihm werden.'],
+ amor:['Seine Liebespfeile zerbrachen im Staub.','Keine Herzen werden durch seine Hand mehr vereint.'],
+ wolfdog:['Sein Zwiespalt ist beendet – er ruht nun in Frieden.','Weder Mensch noch Wolf: Sein Pfad endet hier.'],
+ squirrel:['Ein paar Nüsse rollen ins Gras. Das Getrampel im Holz schweigt.','Kein Rascheln mehr in den Bäumen.'],
+ stone:['Selbst der härteste Fels zerbröckelt unter der Last des Schicksals.','Nur noch Staub bleibt von ihm übrig.'],
+ dog:['Treu bis zum letzten Atemzug focht er seinen Kampf.','Sein Körbchen bleibt leer.'],
+ fool:['Er lachte noch, als der Strick gezurrt wurde. Wer lacht jetzt?','Die Glöckchen seiner Mütze verstummen mit einem letzten Klingen.'],
+ fox:['Sein schlaues Wesen konnte ihn nicht vor dem Schicksal bewahren.','Keine Spuren führen mehr durch das Unterholz.'],
+ rooster:['Sein Schrei verstummt für immer. Der Morgen kommt von nun an ohne Warnung.','Der Gockel kräht nie wieder.']
+};
+const dl=x=>pk(DL[x.role]||DL.villager);
+
+const EP={
+ dorf:['Die Fackeln erlöschen, die Bestien sind vernichtet. Die Sonne geht über {v} auf und vertreibt das Grauen. Die Überlebenden bauen ihr Leben neu auf.'],
+ wolf:['Totenstille liegt über {v}. Die Haustüren sind zertrümmert, die Höfe leer. Im kalten Mondlicht heult das Rudel über den Trümmern des Dorfes.'],
+ liebe:['Zwei Herzen, stärker als Hass und Krallen. Das Liebespaar verlässt das blutgetränkte Dorf {v}, um gemeinsam ein neues Leben fernab des Grauens zu beginnen.'],
+ narr:['Der Narr tanzt jubelnd über den Dorfplatz von {v}. Das Dorf hat den Falschen gehängt und erkennt erst jetzt seinen tödlichen Irrtum!']
+};
+const story=w=>pk(EP[w]).replace('{v}',G.vname)+' Überlebt haben: '+(alive().map(p=>esc(p.name)).join(', ')||'niemand')+'.';
+
+function intro(){
+ G.vname=pk(ST.names);const w=G.p.filter(x=>x.role==='werewolf').length;
+ addLog(`Spiel gestartet in ${G.vname}. ${w} Werwölfe im Spiel.`);
+ show(()=>`<div class='c'><h2>📜 Das Schicksal von ${G.vname}</h2><div class='card'><p class='story-text'>${pk(ST.weather)} über dem abgelegenen Örtchen ${G.vname}. ${pk(ST.event)} Die Dorfbewohner blicken sich mit Misstrauen an. Unter ihnen ${w===1?'versteckt sich eine gierige Bestie':'verstecken sich '+w+' hungrige Werwölfe'}.</p></div>${B('Die erste Nacht beginnt',night,'pri')}</div>`)
+}
+function addName(){const el=document.getElementById('nm');const v=el.value.trim();if(v&&!names.includes(v)&&names.length<24)names.push(v);setup();document.getElementById('nm').focus()}
+
+function setup(){
+ show(()=>{
+  const sp=Object.values(cfg).reduce((a,b)=>a+b,0),v=names.length-sp;
+  const ok=names.length>=4&&v>=0&&cfg.werewolf>=1&&cfg.werewolf*2<names.length;
+  let h='<h1>🐺 Werwolf</h1><p>Ein Handy für die Spielleitung. Sie liest die spannende Geschichte vor!</p>'+(hasSave()?B('▶ Spiel fortsetzen',resume,'pri'):'')+B('📖 Regeln & Rollen',rules,'ghost');
+  h+='<h2>Spieler ('+names.length+')</h2><input id="nm" placeholder="Name eingeben" maxlength="16" autocomplete="off">'+B('Hinzufügen',addName);
+  h+='<div class="chips">'+names.map((n,i)=>`<span class="chip">${esc(n)}${B('✕',()=>{names.splice(i,1);setup()})}</span>`).join('')+'</div>';
+  h+='<h2>Rollenverteilung</h2>'+B('✨ Empfehlung für '+names.length+' Spieler',recommend)+B('🎲 Zufällige Rollen',randomRoles);
+  for(const k of Object.keys(cfg)){h+=`<div class="row"><span>${R[k][1]} ${R[k][0]}</span><span>${B('−',()=>{cfg[k]=Math.max(0,cfg[k]-1);setup()},'sm')}<b>${cfg[k]}</b>${B('+',()=>{cfg[k]++;setup()},'sm')}</span></div>`}
+  h+=`<div class="row"><span>${R.villager[1]} ${R.villager[0]}</span><span><b>${Math.max(v,0)}</b></span></div>`;
+  h+=`<div class='row'><span>🎖️ Hauptmann<br><small style='color:var(--mut)'>Wird am 1. Tag gewählt. Seine Stimme entscheidet bei Gleichstand.</small></span><span>${B(capOn?'An':'Aus',()=>{capOn=!capOn;setup()},'sm')}</span></div>`;
+  h+=`<div class='row'><span>🔊 Sound</span><span>${B(sndOn?'An':'Aus',()=>{sndOn=!sndOn;setup()},'sm')}</span></div><div class='row'><span>🗣️ Erzähler-Stimme</span><span>${B(voiceOn?'An':'Aus',()=>{voiceOn=!voiceOn;setup();say('Hallo, ich bin euer Erzähler.')},'sm')}</span></div>`;
+  h+=`<div class='row'><span>🎚️ Stimmlage</span><span>${B(vp<.7?'🐻':vp<1?'🙂':'🐦',()=>{vp=vp<.7?.8:vp<1?1.15:.55;setup();say('So klingt meine Stimme.')},'sm')}</span></div>`;
+  BONUS.forEach(k=>{h+=`<div class="row"><span>${R[k][1]} ${R[k][0]}<br><small style="color:var(--mut)">${R[k][2]}</small></span><span>${B(bon[k]?'An':'Aus',()=>{bon[k]=!bon[k];setup()},'sm')}</span></div>`});
+  if(ok)h+=B('Spiel starten',start,'pri');
+  else h+='<p class="warn">Mindestens 4 Spieler, 1 Werwolf, Werwölfe unter 50%, Rollenanzahl gültig.</p>';
+  return h});
+}
+
+function start(){
+ try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{})}catch(e){}
+ const roles=[];for(const k in cfg)for(let i=0;i<cfg[k];i++)roles.push(k);
+ while(roles.length<names.length)roles.push('villager');
+ const bonusIn=[];BONUS.forEach(k=>{const i=roles.indexOf('villager');if(bon[k]&&Math.random()<0.25&&i>=0){roles[i]=k;bonusIn.push(k)}});
+ shuffle(roles);
+ G={p:names.map((n,i)=>({name:n,role:roles[i],alive:true})),night:0,healUsed:false,poisonUsed:false,lastGuard:null,stoneUsed:false,blocked:null,bonusIn:bonusIn,captain:null,capDone:false,lovers:null,foxLost:false,crow:null,roleModel:null,log:[]};
+ reveal(0);
+}
+
+function handoff(p,next){show(()=>`<div class="c"><h2>Gib das Handy an</h2><div class="big">${esc(p.name)}</div>${B('Ich bin '+esc(p.name),next,'pri')}</div>`)}
+
+function reveal(i){
+ if(i>=G.p.length)return intro();
+ const p=G.p[i];
+ handoff(p,()=>show(()=>`<div class="c"><h2>Geheime Identität</h2><p>Lass niemanden auf deinen Bildschirm schauen!</p>${B('Rolle enthüllen',()=>show(()=>{
+  const r=R[p.role];let m='';
+  if(p.role==='werewolf'){const o=G.p.filter(x=>x.role==='werewolf'&&x!==p).map(x=>esc(x.name));m=o.length?`<p>Deine Rudelmitglieder: <b>${o.join(', ')}</b></p>`:'<p>Du bist der einzige Werwolf im Dorf.</p>'}
+  return `<div class="c"><div class="card"><div class="big">${r[1]}<br>${r[0]}</div><p class='story-text'>${r[2]}</p>${m}</div>${B('Verstanden & Verstecken',()=>reveal(i+1),'pri')}</div>`}))}</div>`));
+}
+
+function pick(title,list,cb,extra){show(()=>`<h2>${title}</h2>`+list.map(p=>B(esc(p.name),()=>cb(p))).join('')+(extra||'')+(G.inNight?B('↩ Nacht neu beginnen',resume,'ghost'):''))}
+
+const SC={
+ squirrel:'Das freche Eichhörnchen huscht durch die Nacht. Es erwacht und zeigt auf eine Person, die es heute Nacht so sehr ablenkt, dass diese ihre Fähigkeit nicht nutzen kann.',
+ amor:'Der Engelsgleiche Amor erwacht. Er wählt zwei Seelen aus, die fortan in ewig währender Liebe miteinander verbunden sind.',
+ guard:'Der stoische Beschützer erwacht. Er tritt aus den Schatten hervor und wählt eine Person, über die er in dieser Nacht schützend seine Hand hält.',
+ wildchild:'Das Wilde Kind erwacht! Es blickt auf die Dorfbewohner und wählt sein großes Vorbild. Solange sein Vorbild lebt, bleibt das Wilde Kind brav. Stirbt sein Vorbild, wird es zum Werwolf!',
+ wolfdog:'Der geheimnisvolle Wolfshund erwacht. Er spürt das wilde Blut in seinen Adern. Entscheidet er sich dafür, mit den Wölfen zu jagen, oder bleibt er ein treuer Dorfbewohner?',
+ werewolf:'Die grausamen Werwölfe erwachen! Sie schleichen geräuschlos durch die dunklen Gassen und einigen sich stumm auf ihr nächstes Opfer.',
+ fox:'Der schlaue Fuchs erwacht. Er wählt 3 beliebige Personen aus, um deren Fährte aufzunehmen. Befindet sich mindestens ein Werwolf unter ihnen?',
+ seer:'Die weise Seherin erwacht. Sie blickt tief in das Schicksal einer Person und erfährt deren wahres Wesen.',
+ rooster:'Der stolze Hahn erwacht. Er wählt eine Person aus, nach der er am nächsten Morgen krähen wird.',
+ witch:'Die mächtige Hexe erwacht. Sie sieht das Opfer der Werwölfe und entscheidet über den Einsatz ihrer magischen Tränke.'
+};
+
+const SOUNDS={
+ werewolf:'wolfHowl',
+ seer:'magic',
+ witch:'witchPotion',
+ hunter:'shot',
+ wildchild:'wolfHowl'
+};
+
+function roleStep(role,act,done){
+ if(!G.p.some(p=>p.role===role))return done();
+ const p=alive().find(x=>x.role===role),bl=p&&role!=='werewolf'&&p===G.blocked;
+ const note=!p?'<p class="warn">🔒 Diese Rolle ist bereits tot. So tun als ob!</p>':bl?'<p class="warn">⚠️ Diese Person wurde vom Eichhörnchen abgelenkt!</p>':'';
+ show(()=>`<h2>🗣️ Spielleitung liest vor</h2><div class='card'><p class='story-text'>${SC[role]||role}</p></div>${note}`+B(p&&!bl?'Auswahl treffen':'Weiter',()=>{
+  if(SOUNDS[role]) play(SOUNDS[role]);
+  if(p&&!bl) act(p,done); else done();
+ },'pri'));
+}
+
+function showChronik(backFn){
+ const l=G.log||[];
+ show(()=>`<h2>📜 Chronik der Ereignisse</h2><div class='card'>${l.length?l.map(x=>`<div class='chronik-item'><b>Nacht/Tag ${x.round}:</b> ${esc(x.txt)}</div>`).join(''):'<p>Noch keine Einträge vorhanden.</p>'}</div>`+B('Zurück',backFn,'pri'));
+}
+
+function night(){
+ snap();G.inNight=true;
+ G.night++;G.votes=[];G.saved=false;G.poison=null;G.guarded=null;G.victim=null;G.blocked=null;G.crow=null;
+ addLog(`Nacht ${G.night} beginnt.`);
+ show(()=>`<div class="c"><h2>🌙 Nacht ${G.night}</h2><p>Die Nacht legt ihren finsteren Mantel über das Dorf. Alle schließen die Augen. Die Spielleitung führt durch die Geschehnisse.</p>${B('📜 Chronik ansehen',()=>showChronik(night),'ghost')}${B('Nacht beginnen',()=>{
+  roleStep('squirrel',squirrelAct,()=>roleStep(G.lovers?'none':'amor',amorAct,()=>roleStep('guard',guardAct,()=>roleStep(G.roleModel?'none':'wildchild',wildchildAct,()=>roleStep('wolfdog',wolfdogAct,()=>roleStep('werewolf',wolfAct,()=>{
+   const c=new Map();G.votes.forEach(v=>c.set(v,(c.get(v)||0)+1));
+   const mx=Math.max(0,...c.values());const top=[...c].filter(e=>e[1]===mx).map(e=>e[0]);
+   G.victim=top.length?top[Math.random()*top.length|0]:null;
+   roleStep('fox',foxAct,()=>roleStep('seer',seerAct,()=>roleStep('rooster',roosterAct,()=>roleStep('witch',witchAct,resolve))));}))))));
+ },'pri')}</div>`);
+}
+
+function squirrelAct(p,done){pick('🐿️ Wen lenkt das Eichhörnchen ab?',alive().filter(x=>x!==p),t=>{G.blocked=t;addLog(`Eichhörnchen hat ${t.name} abgelenkt.`);done()})}
+function guardAct(p,done){pick('🛡️ Wen beschützt der Beschützer?',alive().filter(x=>x!==G.lastGuard),t=>{G.guarded=t;G.lastGuard=t;addLog(`Beschützer schützt ${t.name}.`);done()})}
+function wildchildAct(p,done){pick('👧 Wähle dein Vorbild:',alive().filter(x=>x!==p),t=>{G.roleModel=t;addLog(`Wildes Kind hat ${t.name} als Vorbild gewählt.`);done()})}
+function wolfAct(p,done){pick('🐺 Wen reißen die Werwölfe?',alive().filter(x=>x.role!=='werewolf'),t=>{G.votes.push(t);addLog(`Werwölfe wählten ${t.name} als Opfer.`);done()})}
+function seerAct(p,done){pick('🔮 Wessen Rolle enthüllt die Seherin?',alive().filter(x=>x!==p),t=>show(()=>`<div class="c"><h2>${esc(t.name)}</h2><div class="big">${t.role==='werewolf'?'🐺 Werwolf!':'🙂 Kein Werwolf'}</div>${B('Verstanden',()=>{addLog(`Seherin prüfte ${t.name}.`);done()},'pri')}</div>`))}
+function wolfdogAct(p,done){show(()=>`<h2>🐶 Pfad des Wolfshunds</h2><p class='story-text'>Möchtest du dich dem Rudel anschließen oder für das Dorf kämpfen?</p>`+B('🐺 Werwolf werden',()=>{p.role='werewolf';addLog(`Wolfshund wurde zum Werwolf.`);done()},'pri')+B('🧑‍🌾 Dorfbewohner bleiben',()=>{addLog(`Wolfshund bleibt Dorfbewohner.`);done()}))}
+function amorAct(p,done){pick('💘 Wähle den ersten Verliebten:',alive(),a=>pick('💘 Wähle den zweiten Verliebten:',alive().filter(x=>x!==a),b=>{G.lovers=[a,b];addLog(`Amor verliebte ${a.name} und ${b.name}.`);done()}))}
+
+function foxAct(p,done){
+ if(G.foxLost)return show(()=>`<div class='c'><h2>🦊 Der Fuchs</h2><p class='story-text'>Der Fuchs hat seinen Geruchssinn verloren und kann keine Fährte mehr aufnehmen.</p>${B('Weiter',done,'pri')}</div>`);
+ 
+ let selected=[];
+ function pickFox(){
+  show(()=>`<h2>🦊 Der Fuchs nimmt Fährte auf</h2>
+  <p>Wähle genau 3 Personen zum Prüfen aus (${selected.length}/3):</p>`+
+  alive().map(x=>{
+   const isSel=selected.includes(x);
+   return B((isSel?'✓ ':'')+esc(x.name),()=>{
+    if(isSel) selected=selected.filter(s=>s!==x);
+    else if(selected.length<3) selected.push(x);
+    pickFox();
+   },isSel?'sel':'');
+  }).join('')+
+  (selected.length===3?B('3 Personen prüfen',()=>{
+   const hit=selected.some(x=>x.role==='werewolf');
+   if(!hit)G.foxLost=true;
+   addLog(`Fuchs prüfte ${selected.map(x=>x.name).join(', ')} (${hit?'Wolf gefunden':'Kein Wolf'}).`);
+   show(()=>`<div class='c'><h2>🦊 Witterung des Fuchses</h2><p>Geprüft: <b>${selected.map(x=>esc(x.name)).join(', ')}</b></p><div class='big'>${hit?'🐺 Wölfe gerochen!':'🙂 Kein Werwolf da!'}</div><p class='story-text'>${hit?'Der Fuchs wittert die Gefahr unter den Dreien!':'Kein Wolf unter diesen Drei. Der Fuchs verliert seine Fährte für den Rest des Spiels.'}</p>${B('Verstanden',done,'pri')}</div>`);
+  },'pri'):''));
+ }
+ pickFox();
+}
+
+function roosterAct(p,done){pick('🐓 Nach wem kräht der Hahn?',alive().filter(x=>x!==p),t=>{G.crow=t;G.crowBy=p;addLog(`Hahn kräht nach ${t.name}.`);done()})}
+
+function witchAct(p,done){
+ const scr=()=>show(()=>{
+  const v=G.victim;
+  let h=`<h2>🧪 Die Hexe erwacht</h2><p class='story-text'>${v?'In ihren Visionen sieht sie, dass <b>'+esc(v.name)+'</b> von den Bestien zerfleischt werden soll.':'In dieser Nacht gab es kein Werwolf-Opfer.'}</p>`;
+  if(G.saved)h+='<p>✔ Du hast dein Opfer mit dem Heiltrank gerettet.</p>';
+  else if(v&&!G.healUsed)h+=B('🧪 Heiltrank nutzen',()=>{G.saved=true;G.healUsed=true;addLog(`Hexe heilte ${v.name}.`);scr()});
+  if(G.poison)h+='<p>☠ Du hast den Gifttrank verwendet.</p>';
+  else if(!G.poisonUsed)h+=B('☠ Gifttrank nutzen',()=>pick('☠ Wen möchtest du vergiften?',alive().filter(x=>x!==p),t=>{G.poison=t;G.poisonUsed=true;addLog(`Hexe vergiftete ${t.name}.`);scr()},B('Zurück',scr,'ghost')));
+  return h+B('Fertig & Einschlafen',done,'pri')});
+ scr();
+}
+
+function resolve(){
+ G.inNight=false;const d=[];let note='';
+ if(G.victim&&!G.saved&&G.victim!==G.guarded){
+  if(G.victim.role==='stone'&&!G.stoneUsed)G.stoneUsed=true;
+  else{d.push(G.victim);
+   if(G.victim.role==='dog'){const ws=alive().filter(x=>x.role==='werewolf');if(ws.length){const w=ws[Math.random()*ws.length|0];if(!d.includes(w))d.push(w);note='<p class="story-text">🐕 Der treue Hund verbiss sich im Todeskampf im Kehlkopf eines Werwolfs!</p>'}}}}
+ if(G.poison&&!d.includes(G.poison))d.push(G.poison);
+ if(d.some(x=>x.role==='squirrel')&&G.blocked&&!d.includes(G.blocked)){d.push(G.blocked);note+='<p class="story-text">🐿️ Das aufgeschreckte Eichhörnchen riss die abgelenkte Person mit ins Verderben!</p>'}
+ d.forEach(x=>x.alive=false);
+ 
+ d.forEach(dead=>{
+  addLog(`${dead.name} (${R[dead.role][0]}) starb in der Nacht.`);
+  checkWildChildModel(dead);
+ });
+
+ if(loverDeath(d))note+='<p class="story-text">💔 Die Bindung war zu stark: Ein Partner verstarb an gebrochenem Herzen!</p>';
+ show(()=>`<div class="c"><h2>☀️ Der Morgen bricht an</h2><p class='story-text'>${pk(d.length?MD:MN)}</p>`+(d.length?d.map(x=>`<div class='card'><p><b>${esc(x.name)}</b> ist verstorben.<br>Rolle: ${R[x.role][1]} <b>${R[x.role][0]}</b></p><p class='story-text'><i>${dl(x)}</i></p></div>`).join(''):'<p>Die Morgensonne bringt Erleichterung: Alle haben überlebt!</p>')+note+(G.crow&&G.crow.alive?`<p class='story-text'>🐓 Der Hahn kräht lautstark! <b>${esc(G.crow.name)}</b> gerät ins Rampenlicht und muss als Erster sprechen.</p>`:'')+B('Zur Tagesdiskussion',()=>afterDeath(d,vote),'pri')+'</div>');
+}
+
+function checkWildChildModel(deadPlayer){
+ if(G.roleModel&&G.roleModel===deadPlayer){
+  const wc=G.p.find(x=>x.role==='wildchild'&&x.alive);
+  if(wc){
+   wc.role='werewolf';
+   addLog(`👧⚠️ Das Vorbild von ${wc.name} ist gestorben! ${wc.name} ist zum Werwolf geworden!`);
+  }
+ }
+}
+
+function win(){
+ const a=alive(),w=a.filter(x=>x.role==='werewolf').length;
+ const L=G.lovers;
+ if(L&&L[0].alive&&L[1].alive&&(L[0].role==='werewolf')!==(L[1].role==='werewolf'))return a.length===2?'liebe':null;
+ if(!w)return 'dorf';
+ if(w>=a.length-w)return 'wolf';
+ return null;
+}
+
+function afterDeath(ds,next){
+ const q=ds.filter(d=>d.role==='hunter');
+ const fin=()=>{const w=win();if(w)return end(w);const c=G.captain;if(c&&!c.alive&&alive().length)handoff(c,()=>pick('🎖️ Bestimme deinen Nachfolger als Hauptmann:',alive(),t=>{G.captain=t;addLog(`${c.name} ernannte ${t.name} zum neuen Hauptmann.`);next()}));else next()};
+ (function it(){
+  const h=q.shift();
+  if(!h||!alive().length)return fin();
+  handoff(h,()=>pick('🏹 Jäger! Wen nimmst du mit deinem letzten Schuss mit?',alive(),t=>{
+   t.alive=false;
+   play('shot');
+   addLog(`Jäger ${h.name} erschoss ${t.name}.`);
+   checkWildChildModel(t);
+   const lx=[t],ln=loverDeath(lx);
+   show(()=>`<div class="c"><h2>💥 Ein Schuss hallt durch das Dorf!</h2><p class='story-text'>Im Sterben riss der Jäger seinen Bogen hoch. <b>${esc(t.name)}</b> brach tödlich getroffen zusammen!</p><p>Rolle: ${R[t.role][1]} ${R[t.role][0]}</p>${ln}${B('Weiter',it,'pri')}</div>`);
+  }));
+ })();
+}
+
+function loverDeath(ds){
+ if(!G.lovers)return '';let n='';
+ G.lovers.forEach((x,i)=>{const o=G.lovers[1-i];if(ds.includes(x)&&o.alive){o.alive=false;ds.push(o);addLog(`${o.name} starb an gebrochenem Herzen.`);checkWildChildModel(o);n+=`<p class='story-text'>💔 <b>${esc(o.name)}</b> bricht über dem leblosen Körper der großen Liebe zusammen und stirbt an gebrochenem Herzen.</p>`}});
+ return n;
+}
+
+function vote(){
+ if(capOn&&!G.captain&&!G.capDone){
+  G.capDone=true;
+  return pick('🎖️ Hauptmann wählen (Gemeinschaftsentscheid):',alive(),r=>{
+   G.captain=r;
+   addLog(`${r.name} wurde zum Hauptmann gewählt.`);
+   show(()=>`<div class='c'><h2>🎖️ Hauptmann ernannt</h2><p class='story-text'><b>${esc(r.name)}</b> übernimmt die Führung im Dorf!</p>${B('Weiter zur Diskussion',vote,'pri')}</div>`);
+  });
+ }
+ 
+ show(()=>`<h2>🗳️ Tag ${G.night} - Dorfplatz</h2>
+ <p class='story-text'>Diskutiert gemeinsam in der Gruppe. Die Spielleitung klickt nach der Entscheidung auf die hinzurichtende Person.</p>
+ ${G.captain&&G.captain.alive?`<p>Hauptmann: <b>${esc(G.captain.name)}</b></p>`:''}
+ ${B('📜 Chronik ansehen',()=>showChronik(vote),'ghost')}
+ <div class='card'>
+  <h3>Wen schickt das Dorf zum Schafott?</h3>
+  ${alive().map(p=>B('⚖️ '+esc(p.name)+' hinrichten',()=>lynch(p),'pri')).join('')}
+ </div>
+ ${B('Niemanden hinrichten (In die Nacht gehen)',()=>{addLog('Dorf hat niemanden hingerichtet.');night()},'ghost')}`);
+}
+
+function lynch(p){
+ p.alive=false;
+ addLog(`${p.name} (${R[p.role][0]}) wurde vom Dorf hingerichtet.`);
+ checkWildChildModel(p);
+ show(()=>`<div class="c"><h2>⚖️ Das Urteil des Dorfes</h2><p class='story-text'>Die Schlinge zieht sich zu. Das Dorf richtet <b>${esc(p.name)}</b> hin.</p><div class='card'><p>Rolle: ${R[p.role][1]} <b>${R[p.role][0]}</b></p><p class='story-text'><i>${dl(p)}</i></p></div>${B('Weiter',()=>{if(p.role==='fool')return end('narr');const ds=[p],n=loverDeath(ds);n?show(()=>`<div class='c'><h2>💔 Tragödie</h2>${n}${B('Weiter',()=>afterDeath(ds,night),'pri')}</div>`):afterDeath(ds,night)},'pri')}</div>`);
+}
+
+function end(w){
+ try{localStorage.removeItem('ww')}catch(e){}
+ show(()=>`<h2>${w==='liebe'?'💘 Das Liebespaar siegt!':w==='narr'?'🤡 Der Narr gewinnt!':w==='dorf'?'🏡 Das Dorf hat gesiegt!':'🐺 Die Werwölfe triumphieren!'}</h2><p class='story-text'>${story(w)}</p>${B('📜 Vollsändige Chronik anzeigen',()=>showChronik(()=>end(w)),'ghost')}<div class="card">`+G.p.map(p=>`<div class="row"><span>${p.alive?'':'💀 '}${esc(p.name)}</span><span>${R[p.role][1]} ${R[p.role][0]}</span></div>`).join('')+'</div>'+B('Neues Spiel starten',start,'pri')+B('Einstellungen',setup,'ghost'));
+}
+
+function hasSave(){try{return !!localStorage.getItem('ww')}catch(e){return false}}
+const ix=p=>p?G.p.indexOf(p):-1;
+function snap(){try{localStorage.setItem('ww',JSON.stringify({names,cfg,capOn,g:{...G,lovers:G.lovers&&G.lovers.map(ix),captain:ix(G.captain),lastGuard:ix(G.lastGuard),roleModel:ix(G.roleModel),victim:null,blocked:null,crow:null,crowBy:null,guarded:null,poison:null}}))}catch(e){}}
+function resume(){try{const s=JSON.parse(localStorage.getItem('ww'));names=s.names;cfg=s.cfg;capOn=s.capOn;G=s.g;const f=i=>i>=0?G.p[i]:null;G.lovers=G.lovers&&G.lovers.map(f);G.captain=f(G.captain);G.lastGuard=f(G.lastGuard);G.roleModel=f(G.roleModel);night()}catch(e){setup()}}
+function recommend(){const n=names.length;Object.keys(cfg).forEach(k=>cfg[k]=0);cfg.werewolf=Math.max(1,Math.round(n/4));[['seer',5],['witch',6],['hunter',7],['guard',8],['amor',9],['wildchild',10],['fox',11],['wolfdog',12]].forEach(([k,m])=>{if(n>=m)cfg[k]=1});setup()}
+function randomRoles(){const n=names.length;Object.keys(cfg).forEach(k=>cfg[k]=0);cfg.werewolf=Math.max(1,Math.round(n/4));const pool=shuffle(Object.keys(cfg).filter(k=>k!=='werewolf'));pool.slice(0,Math.min(pool.length,Math.floor(n/2))).forEach(k=>cfg[k]=1);setup()}
+function rules(){show(()=>'<h2>📖 Spielregeln & Ablauf</h2><div class="card"><p style="text-align:left"><b>Nacht:</b> Alle schließen die Augen. Die Spielleitung liest die stimmungsvolle Geschichte vor und lässt die Rollen erwachen.<br><br><b>Tag:</b> Die Toten werden offenbart. Das Dorf beratschlagt sich gemeinsam offline. Die Spielleitung wählt danach die hinzurichtende Person am Handy aus.<br><br><b>Chronik:</b> Über den Chronik-Button kann die Spielleitung jederzeit einsehen, was im Verlauf des Spiels passiert ist.</p></div><h2>🃏 Alle Rollen im Überblick</h2>'+Object.keys(R).map(k=>`<div class='card'><b>${R[k][1]} ${R[k][0]}</b><p class='story-text'>${R[k][2]}</p></div>`).join('')+B('Zurück',setup,'pri'))}
+
+setup();
+</script>
+</body>
+</html>
